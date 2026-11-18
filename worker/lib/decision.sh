@@ -41,8 +41,8 @@ decision_answers() {
     --arg marker "$DECISION_MARKER" --arg author "$author" --argjson approvers "$LOOP_MANUAL_ISSUE_CREATORS" '
       add // [] | (map(.body // "" | contains($marker)) | rindex(true)) as $at |
       if $at == null then empty else
-        .[$at + 1:] | map(select(.user.type == "User" and (.user.login | ascii_downcase) as $who |
-          ($who == ($author | ascii_downcase) or ($approvers | map(ascii_downcase) | index($who)) != null))) |
+        .[$at + 1:] | map(select(.user.type == "User" and ((.user.login | ascii_downcase) as $who |
+          ($who == ($author | ascii_downcase) or ($approvers | map(ascii_downcase) | index($who)) != null)))) |
         .[-10:] | map("[\(.user.login)] \(.body // "" | .[0:4000])") | join("\n\n---\n\n")
       end'
 }
