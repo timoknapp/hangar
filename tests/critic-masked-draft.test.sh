@@ -30,6 +30,10 @@ LOOP_COPILOT_SECRET_FILTER_MODULE="$TMP/filter.js" COPILOT_PAT=fixture CRITIC_FI
 CURRENT_ISSUE=42 CURRENT_ISSUE_CONTEXT='Add auth fixture.' issue_title=Fixture issue_body='Add auth fixture.'
 SUMMARY=$'## Problem\np\n## Root Cause\nr\n## Solution\ns\n## Testing\nt\n## Future Work\nNone'
 PR_EXECUTIVE_SUMMARY="$SUMMARY"
+# A current issue now participates in final-body validation; keep its external
+# metadata deterministic as well, rather than contacting GitHub in this test.
+refresh_issue_evidence() { CURRENT_ISSUE_EVIDENCE=fixture; }
+issue_evidence_context() { echo 'Publisher-verified fixture metadata.'; }
 CALLS=0
 run_agent_copilot() { CALLS=$((CALLS + 1)); fail 'masked input reached a model'; }
 run_verify_with_corrections() { VERIFIED_HEAD=$(git rev-parse HEAD); return 0; }
