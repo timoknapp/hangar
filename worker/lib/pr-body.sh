@@ -43,8 +43,11 @@ issue_requests_reference_only() {
       if (!/^[1-9][0-9]*$/.test(current)) return process.exit(2);
       let referenceOnly=false, ambiguous=false;
       for (const clause of text.toLowerCase().split(/[!?;\n]|\.(?=\s|$)/)) {
-        if (/^\s*(?:[-*]\s*)?(?:this is (?:a )?)?(?:discussion(?:[- ]only)?(?: issue)?|reference[- ]only)\s*$/.test(clause) ||
+        const discussion=/\bdiscussion\b/.test(clause);
+        if (/^\s*(?:[-*]\s*)?(?:(?:this is (?:a )?|for ))?(?:discussion(?:[- ]only)?(?: issue)?|reference[- ]only)\s*(?::|$)/.test(clause) ||
             /\b(?:this|current) (?:issue|phase|task) (?:is|remains) (?:a |for )?(?:discussion(?:[- ]only)?|reference[- ]only)\b/.test(clause)) referenceOnly=true;
+        else if (discussion && !/\b(?:parent|other|separate|unrelated|sibling)\b/.test(clause) &&
+                 ![...clause.matchAll(/#([0-9]+)\b/g)].some(m=>m[1]!==current)) ambiguous=true;
         const bans=[...clause.matchAll(/\b(?:do not|must not|never|no)[ -]*(?:auto[ -]*)?clos(?:e|ing)\b/g)];
         for (let i=0;i<bans.length;i++) {
           const ban=bans[i];

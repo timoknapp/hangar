@@ -65,6 +65,8 @@ for contract in \
   'Do not close this issue until checks pass and never close this issue.' \
   'Do not close this issue, but do not close the parent until checks pass.' \
   'This is a discussion issue.' \
+  'For discussion only.' \
+  'Discussion: compare the approaches.' \
   'This issue is reference-only.'; do
   render_expect '' "$contract"
 done
@@ -73,6 +75,7 @@ render_expect '' 'Close this phase after its spec is approved; never close the p
 TASK_SPEC=false
 for contract in \
   'Never close the tracking item.' \
+  'An earlier discussion informs this implementation.' \
   'Never close this issue and run the checks before review.' \
   'Never close parent finding #42.' \
   'Never close #17 and #42.' \

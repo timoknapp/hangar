@@ -498,6 +498,8 @@ None.'
 FINAL_PR_BODY="$PR_EXECUTIVE_SUMMARY"
 
 # Replace external gate actions with deterministic in-process fakes.
+# The preceding terminal-lifecycle fixture released CURRENT_ISSUE.
+CURRENT_ISSUE=42
 VERIFY_CALLS=0
 CRITIC_CALLS=0
 FIX_CALLS=0
