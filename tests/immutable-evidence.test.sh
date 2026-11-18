@@ -60,6 +60,7 @@ COPILOT_PAT=fixture CRITIC_INPUT_NONCE_OVERRIDE=fixture-nonce
 CURRENT_ISSUE_CONTEXT='Correct a comment only; preserve authorization.'
 FINAL_PR_BODY='Comment correction only. Authorization unchanged.'
 export FAKE_COPILOT_OUTPUT=$'VERDICT: REQUEST_CHANGES\nINPUT_NONCE: fixture-nonce\nFINDINGS_JSON_BEGIN\n[{"id":"F1","severity":"BLOCK","category":"correctness","location":"fixture:1","evidence":"Synthetic blocking defect.","status":"open"}]\nFINDINGS_JSON_END\n- Authorization bypass is in the complete input.'
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_agent_copilot() {
   local input
   input=$(find "$WORKSPACE_DIR" -maxdepth 1 -name '.critic-input.*.md')
@@ -237,7 +238,9 @@ for metadata in info/grafts shallow info/sparse-checkout objects/info/alternates
   mkdir -p ".git/$(dirname "$metadata")"
   printf 'fixture\n' >".git/$metadata"
   (
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
     git() { fail 'publisher Git invoked on rejected metadata'; }
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
     command() { if [[ "$1" == git ]]; then fail 'publisher config read on rejected metadata'; fi; builtin command "$@"; }
     reject sanitize_repository_git_config
   )
@@ -315,7 +318,9 @@ run_verify_gate
 workspace_clean
 pass 'normal clean/binary/executable/unusual paths + ignored build artifacts + packed objects remain usable'
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   cleanup_issue() { [[ "$3" == 'Repository evidence drift before publication' ]] || fail 'wrong publication block'; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   gh() { fail 'corrupt evidence reached publication API'; }
   printf 'changed after verification' >auth.js
   reject publish_task 1 Fixture feature ''

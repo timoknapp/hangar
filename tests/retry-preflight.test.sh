@@ -164,7 +164,9 @@ ok 'an unchanged unhealthy reason is logged once'
   jq -n '{packages:{"node_modules/playwright-core":{version:"1.64.1; rm -rf /"}}}' >evil-package-lock.json
   git add . && git commit -qm base; BASE_PW=$(git rev-parse HEAD)
   AGENT_HOME="$TMP/agent-home"; mkdir -p "$AGENT_HOME/.cache/ms-playwright"
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   sudo() { shift 3; "$@"; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_agent_command() { printf '%s\n' "$1" >>"$TMP/installs"; [[ "${PW_FAIL:-}" != 1 ]] || return 1; bash -c "${1#*&& }"; }
   : >"$TMP/installs"
   preflight_browsers "$BASE_PW" || fail "browser preflight failed: $PREFLIGHT_REASON"
