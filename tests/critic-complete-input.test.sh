@@ -494,15 +494,22 @@ if run_critic_attempts; then fail 'persistent incomplete accepted'; fi
 LOOP_CRITIC_ATTEMPTS=1
 echo 'PASS: fresh critic retry is bounded, never re-rolls REQUEST_CHANGES or oversize'
 # Existing lifecycle must not try to repair code for missing transport evidence.
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_verify_with_corrections() { return 0; }
 CRITIC_REACHED=false
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_critic() { CRITIC_REACHED=true; CRITIC_FAILURE_KIND=incomplete; CRITIC_FEEDBACK='incomplete delivery'; return 1; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_fix_session() { fail 'incomplete delivery triggered code repair'; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 take_correction() { fail 'incomplete delivery consumed repair budget'; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 summary_complete() { return 0; }
 # Keep this transport-only mock valid at the new rendered-closure boundary.
 CURRENT_ISSUE=42
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 build_pr_body() { printf 'fixture body\n\nCloses #%s.\n' "$1"; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 generate_change_summary() { echo 'fixture change'; }
 issue_title=Fixture issue_body=Fixture
 if run_quality_gates; then fail 'incomplete quality gate accepted'; fi
