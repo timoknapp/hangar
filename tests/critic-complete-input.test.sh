@@ -481,7 +481,9 @@ run_critic() { CRITIC_REACHED=true; CRITIC_FAILURE_KIND=incomplete; CRITIC_FEEDB
 run_fix_session() { fail 'incomplete delivery triggered code repair'; }
 take_correction() { fail 'incomplete delivery consumed repair budget'; }
 summary_complete() { return 0; }
-build_pr_body() { echo 'fixture body'; }
+# Keep this transport-only mock valid at the new rendered-closure boundary.
+CURRENT_ISSUE=42
+build_pr_body() { printf 'fixture body\n\nCloses #%s.\n' "$1"; }
 generate_change_summary() { echo 'fixture change'; }
 issue_title=Fixture issue_body=Fixture
 if run_quality_gates; then fail 'incomplete quality gate accepted'; fi

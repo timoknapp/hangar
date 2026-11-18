@@ -27,7 +27,7 @@ module.exports = { secretFilterCreate: () => 1,
 JS
 LOOP_CRITIC=true LOOP_CRITIC_MODEL=fixture-model LOOP_MAX_REVIEW_BYTES=1048576 LOOP_CRITIC_ATTEMPTS=2
 LOOP_COPILOT_SECRET_FILTER_MODULE="$TMP/filter.js" COPILOT_PAT=fixture CRITIC_FINDINGS_LEDGER='[]'
-CURRENT_ISSUE_CONTEXT='Add auth fixture.' issue_title=Fixture issue_body='Add auth fixture.'
+CURRENT_ISSUE=42 CURRENT_ISSUE_CONTEXT='Add auth fixture.' issue_title=Fixture issue_body='Add auth fixture.'
 SUMMARY=$'## Problem\np\n## Root Cause\nr\n## Solution\ns\n## Testing\nt\n## Future Work\nNone'
 PR_EXECUTIVE_SUMMARY="$SUMMARY"
 CALLS=0
