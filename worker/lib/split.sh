@@ -211,8 +211,9 @@ split_child_evidence() {
   split_recorded "$comments" | jq -e --argjson c "$child" --arg i "$(jq -r .index <<<"$part")" '.[$i] == $c' >/dev/null || return 1
   pjson=$(gh issue view "$parent" --repo "$REPO_SLUG" --json state,author,labels) || return 1
   jq -e --argjson creators "$LOOP_MANUAL_ISSUE_CREATORS" --argjson required "$LOOP_REQUIRED_LABELS" '
+    ((.author.login // "") | ascii_downcase) as $a |
     .state == "OPEN" and .author.is_bot == false and
-    ((.author.login // "") | ascii_downcase) as $a | ($creators | map(ascii_downcase) | index($a)) != null and
+    ($creators | map(ascii_downcase) | index($a)) != null and
     ($required | length > 0) and ([.labels[].name] as $n | all($required[]; . as $r | $n | index($r)))' <<<"$pjson" >/dev/null || return 1
   approvals=$(manual_approval_evidence "$parent") || return 1
   jq -cn --argjson part "$part" --argjson parent "$pjson" --argjson approvals "$approvals" '
