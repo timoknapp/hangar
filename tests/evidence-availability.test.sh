@@ -24,6 +24,7 @@ run_agent_command() { echo HANGAR_AGENT_STARTED; /usr/bin/bash --noprofile --nor
 # account/home setup (no such account here). The sanitizer is never mocked.
 startup() (
   SESSION_USER=fixture
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   su() {
     [[ "$*" == '- fixture -c source /home/fixture/.workspace_env && source /home/fixture/worker-loop.sh && sanitize_repository_git_config' ]] || return 99
     sanitize_repository_git_config
@@ -89,8 +90,11 @@ PY
   # Exercise the real publish preconditions; stop at the authorization boundary
   # so this never mutates a remote API or fakes a publication verdict.
   (
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
     publication_authorized() { printf reached >"$TMP/authorized-$legacy"; PUBLICATION_BLOCK_REASON='fixture stop'; return 1; }
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
     cleanup_issue() { [[ "$3" == 'fixture stop' ]] || fail 'publication evidence rejected'; }
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
     gh() { fail 'unexpected API'; }
     reject publish_task 1 Fixture "$TASK_BRANCH" ''
   )

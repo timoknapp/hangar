@@ -38,6 +38,7 @@ prepare_pr_summary() { return 0; }
 refresh_issue_evidence() { return 0; }
 issue_evidence_context() { echo evidence; }
 retain_gate_log() { :; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_agent_copilot() {
   printf 'fixed\n' >app.txt
   # As on the real worker: an unreadable cache file the publisher cannot index.

@@ -44,10 +44,12 @@ cp "$TMP/original-config" .git/config
 # Each config-construction and final replacement failure must propagate.
 # Bash `command` is overridden only within a subshell, never production.
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   command() { if [[ "$1 $2" == 'git config' ]]; then return 9; fi; builtin command "$@"; }
   reject sanitize_repository_git_config
 )
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   mv() { return 9; }
   reject sanitize_repository_git_config
 )

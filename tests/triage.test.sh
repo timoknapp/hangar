@@ -67,6 +67,7 @@ ok 'publisher enforces size limits and the override; comment text cannot close i
 
 # --- run_triage: holds work back with labels, never approves; invalid = infrastructure ---
 LABELS='["squad","implementation-approved","squad:processing"]'; CALLS="$TMP/calls"; : >"$CALLS"; MODEL_OUT=""; MODEL_RC=0
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() {
   printf '%s\n' "$*" >>"$CALLS"
   case "$1 $2" in

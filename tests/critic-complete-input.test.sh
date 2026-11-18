@@ -109,6 +109,7 @@ COPILOT_PAT=fixture CRITIC_INPUT_NONCE_OVERRIDE=fixture-nonce
 CURRENT_ISSUE_CONTEXT='Correct documentation spelling; preserve strict authorization.'
 FINAL_PR_BODY='Documentation-only correction. No test execution claim.'
 export CRITIC_TEST_MODE=full FAKE_COPILOT_OUTPUT=$'VERDICT: APPROVE\nINPUT_NONCE: fixture-nonce\nFINDINGS_JSON_BEGIN\n[]\nFINDINGS_JSON_END\n- Comment-only change.'
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_agent_copilot() {
   local input arg
   input=$(find "$WORKSPACE_DIR" -maxdepth 1 -name '.critic-input.*.md')
@@ -216,6 +217,7 @@ echo 'PASS: redacted line 898 rejects entire 801-900 block; diagnostics expose o
 git checkout -q feature
 printf "expect(headers.authorization).toBe('Bearer synthetic-admin');\n" > auth-header.spec.ts
 git add auth-header.spec.ts && git commit -qm 'auth header fixture'
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_agent_copilot() {
   local input
   input=$(find "$WORKSPACE_DIR" -maxdepth 1 -name '.critic-input.*.md')
@@ -232,6 +234,7 @@ original_diff=$(git diff --no-ext-diff --no-textconv --full-index "$(trusted_bas
    "$REVIEW_DIFF_HASH" == "$(printf '%s' "$original_diff" | sha256sum | cut -d' ' -f1)" ]] ||
   fail 'review binding no longer on original diff'
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   critic_escape_masked() { cat; }
   if run_critic; then fail 'unescaped CLI-masked input proven complete'; fi
   [[ "$CRITIC_FAILURE_KIND" == incomplete && "$CRITIC_FEEDBACK" == *'content mismatch lines'* ]] || fail 'control did not reproduce #407'
@@ -252,6 +255,7 @@ if grep -Fq -- '"password=$PASSWORD"' "$TMP/input.md"; then fail 'raw maskable p
 grep -Fq -- '--env-var "password=$PASSWORD"' <(critic_unescape_masked < "$TMP/input.md") || fail 'password escaping not reversible'
 [[ "$(printf 'DB_PASSWORD=x passwordless\n' | critic_escape_masked)" == 'DB_PASSWORD=x passwordless' ]] || fail 'escaping touched non-word occurrences'
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   critic_escape_masked() { cat; }
   if run_critic; then fail 'unescaped password line proven complete'; fi
   [[ "$CRITIC_FAILURE_KIND" == incomplete && "$CRITIC_FEEDBACK" == *'content mismatch lines'* ]] || fail 'control did not reproduce #412'
@@ -259,6 +263,7 @@ grep -Fq -- '--env-var "password=$PASSWORD"' <(critic_unescape_masked < "$TMP/in
 echo 'PASS: CLI-masked password assignment is escaped, delivered exactly and reversible (control reproduces #412)'
 # Pre-existing marker characters would make the mapping ambiguous: no model call.
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_agent_copilot() { fail 'ambiguous marker input called model'; }
   FINAL_PR_BODY='Uses ⟦ brackets in prose.'
   if run_critic; then fail 'ambiguous marker input accepted'; fi
@@ -276,6 +281,7 @@ JS
 LOOP_COPILOT_SECRET_FILTER_MODULE="$TMP/fake-filter.js"
 run_critic || fail "preflight rejected escaped input: $CRITIC_FEEDBACK"
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_agent_copilot() { fail 'masked credential called model'; }
   FINAL_PR_BODY="Example token ghp_$(printf 'A%.0s' {1..24}) must not be used."
   if run_critic >"$TMP/preflight.log" 2>&1; then fail 'maskable credential reached model'; fi
@@ -299,6 +305,7 @@ echo 'PASS: native-filter preflight passes escaped input, refuses residual maske
     [[ "$CRITIC_FAILURE_KIND" == "$1" && "$CRITIC_FEEDBACK" == *"$2"* ]] || fail "expected $1/$2, got $CRITIC_FAILURE_KIND: $CRITIC_FEEDBACK"
   }
   CRITIC_N=0 FIX_N=0
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_agent_copilot() {
     local arg prev='' prompt='' input
     for arg in "$@"; do [[ "$prev" != -p ]] || prompt="$arg"; prev="$arg"; done
@@ -377,10 +384,15 @@ echo 'PASS: native-filter preflight passes escaped input, refuses residual maske
   echo 'PASS: fixed prior BLOCK closes with evidence while a new late-diff regression blocks'
 
   # Correction session: cumulative open findings as fenced untrusted data.
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   refresh_issue_evidence() { CURRENT_ISSUE_EVIDENCE=fixture; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   issue_evidence_context() { echo '## Publisher-verified GitHub metadata (fixture)'; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   retain_gate_log() { :; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   read_repo_file() { local r; r=$(resolve_repo_file_path "$1") || return 1; sed -n "1,${2:-1200}p" "$r"; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   remove_repo_file_as_agent() { rm -f -- "$WORKSPACE_DIR/$1"; }
   CURRENT_ISSUE=7
   SUMMARY=$'## Problem\nP.\n## Root Cause\nR.\n## Solution\nS.\n## Testing\nT.\n## Future Work\nNone.'
@@ -402,6 +414,7 @@ echo 'PASS: native-filter preflight passes escaped input, refuses residual maske
 
   # Real gate loop: verify failure + regression until the budget ends.
   BASE_VERIFY_OK=true issue_title=Fixture issue_body='Fix authorization.'
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_verify_gate() { VERIFY_N=$((VERIFY_N + 1)); if [[ " $VERIFY_FAILS " == *" $VERIFY_N "* ]]; then VERIFY_LOG_TAIL="forced verify failure $VERIFY_N"; return 1; fi; }
   gate_case() {
     CURRENT_MANUAL_INTAKE=$1 VERIFY_FAILS=$2; shift 2
@@ -451,7 +464,10 @@ if validate_critic_delivery "$TMP/input.md" "$TMP/oversize-events.jsonl" fixture
 fi
 echo 'PASS: event parser byte ceiling fails closed'
 # Non-review critic failures get one fresh, fully re-proven session.
+# Scope the retry mocks so they cannot shadow earlier real-critic scenarios.
+(
 CRITIC_CALLS=0
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_critic() {
   CRITIC_CALLS=$((CRITIC_CALLS + 1))
   if (( CRITIC_CALLS == 1 )); then CRITIC_FAILURE_KIND=incomplete; CRITIC_FEEDBACK='content filter'; return 1; fi
@@ -461,29 +477,42 @@ LOOP_CRITIC_ATTEMPTS=2
 run_critic_attempts || fail 'transient critic failure not retried'
 [[ "$CRITIC_CALLS" == 2 ]] || fail 'unexpected critic attempt count'
 CRITIC_CALLS=0
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_critic() { CRITIC_CALLS=$((CRITIC_CALLS + 1)); CRITIC_FAILURE_KIND=review; CRITIC_FEEDBACK='fix it'; return 1; }
 if run_critic_attempts; then fail 'review verdict accepted'; fi
 [[ "$CRITIC_CALLS" == 1 ]] || fail 'REQUEST_CHANGES re-rolled for approval'
 CRITIC_CALLS=0
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_critic() { CRITIC_CALLS=$((CRITIC_CALLS + 1)); CRITIC_FAILURE_KIND=incomplete; CRITIC_FEEDBACK='Complete review exceeds configured byte budget'; return 1; }
 if run_critic_attempts; then fail 'oversize accepted'; fi
 [[ "$CRITIC_CALLS" == 1 ]] || fail 'deterministic oversize retried'
 CRITIC_CALLS=0
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_critic() { CRITIC_CALLS=$((CRITIC_CALLS + 1)); CRITIC_FAILURE_KIND=incomplete; CRITIC_FEEDBACK='gap'; return 1; }
 if run_critic_attempts; then fail 'persistent incomplete accepted'; fi
 [[ "$CRITIC_CALLS" == 2 ]] || fail 'retry not bounded'
 LOOP_CRITIC_ATTEMPTS=1
 echo 'PASS: fresh critic retry is bounded, never re-rolls REQUEST_CHANGES or oversize'
 # Existing lifecycle must not try to repair code for missing transport evidence.
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_verify_with_corrections() { return 0; }
 CRITIC_REACHED=false
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_critic() { CRITIC_REACHED=true; CRITIC_FAILURE_KIND=incomplete; CRITIC_FEEDBACK='incomplete delivery'; return 1; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_fix_session() { fail 'incomplete delivery triggered code repair'; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 take_correction() { fail 'incomplete delivery consumed repair budget'; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 summary_complete() { return 0; }
-build_pr_body() { echo 'fixture body'; }
+# Keep this transport-only mock valid at the new rendered-closure boundary.
+CURRENT_ISSUE=42
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
+build_pr_body() { printf 'fixture body\n\nCloses #%s.\n' "$1"; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 generate_change_summary() { echo 'fixture change'; }
 issue_title=Fixture issue_body=Fixture
 if run_quality_gates; then fail 'incomplete quality gate accepted'; fi
 [[ "$CRITIC_REACHED" == true && "$GATE_NOTE" == 'incomplete delivery' ]] || fail 'incomplete critic not reached'
 echo 'PASS: incomplete delivery stops quality gate without repair'
+)

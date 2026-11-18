@@ -56,6 +56,7 @@ for f in \
   deploy.sh \
   remote-deploy.sh \
   tests/worker-loop.test.sh \
+  tests/pr-body.test.sh \
   tests/issue-evidence.test.sh \
   tests/review-origin.test.sh \
   tests/quality-lifecycle.test.sh \
@@ -66,6 +67,7 @@ for f in \
   tests/immutable-evidence.test.sh \
   tests/evidence-availability.test.sh \
   tests/fixtures/evidence-user-switch.sh \
+  tests/fixtures/atomic-mkdir.sh \
   tests/image-key-hygiene.test.sh \
   tests/critic-complete-input.test.sh \
   tests/agent-launch.container.sh \
@@ -112,6 +114,7 @@ bash tests/public-release-check.sh
 bash tests/config-equivalence.sh
 bash tests/pr-guard.test.sh
 bash tests/worker-loop.test.sh
+bash tests/pr-body.test.sh
 bash tests/receipt.test.sh
 bash tests/retry-preflight.test.sh
 bash tests/checkpoint-reaper.test.sh

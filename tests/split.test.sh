@@ -170,6 +170,7 @@ ok 'parts are manual intake only with own markers and a live, human-approved, al
       jq -c --arg n "$(sed -E 's#.*/issues/([0-9]+)/.*#\1#' <<<"$2")" '.issues[$n].events' "$DB"
     else split_fixture_gh "$@"; fi
   }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   git() { [[ "$1" == ls-tree ]] && return 0; command git "$@"; }
   CURRENT_APPROVAL_ISSUE_JSON=$(gh issue view 101)
   ISSUE_CONTRACT_HASH=$(issue_contract_hash "$CURRENT_APPROVAL_ISSUE_JSON")

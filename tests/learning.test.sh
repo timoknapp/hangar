@@ -31,6 +31,7 @@ ok 'only a kind seen on at least two different refs is a repeated signal'
 
 # --- signal collection from GitHub (fixture): human corrections only ---
 NOW=$(date -u +%FT%TZ); OLD=$(date -u -d '-30 days' +%FT%TZ)
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() {
   case "$1 $2" in
     'pr list') jq -cn --arg now "$NOW" --arg old "$OLD" '[
@@ -87,6 +88,7 @@ check_repository_evidence() { return 0; }
 repair_shared_workspace_modes() { return 0; }
 read_trusted_file() { git show "${TASK_BASE_SHA}:$1" 2>/dev/null; }
 retain_gate_log() { :; }
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 collect_learning_signals() { printf '%s\n' '{"kind":"pr-changed","ref":"#1","note":"a"}' '{"kind":"pr-changed","ref":"#3","note":"b"}'; }
 MODEL_OUT=$(wrap "$good")
 run_agent_copilot() {

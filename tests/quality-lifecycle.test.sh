@@ -14,6 +14,8 @@ export AGENT_GROUP
 source "$ROOT/worker/worker-loop.sh"
 # shellcheck source=tests/fixtures/evidence-user-switch.sh
 source "$ROOT/tests/fixtures/evidence-user-switch.sh"
+# shellcheck source=tests/fixtures/atomic-mkdir.sh
+source "$ROOT/tests/fixtures/atomic-mkdir.sh"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok() { echo "PASS: $*"; }
 reject() { if "$@"; then fail "unexpected success: $*"; fi; }
@@ -57,6 +59,7 @@ REPAIR_CALLS="$TMP/repair-calls"
 # Evidence checks keep the fixture user switch; only the coding-user repair
 # pass fails (it cannot chmod a publisher-owned directory in production).
 eval "fixture_$(declare -f sudo)"
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 sudo() { echo "$*" >>"$REPAIR_CALLS"; [[ "$*" != *" /usr/bin/find "* ]] || return 7; fixture_sudo "$@"; }
 begin_task
 prepare_task_base feature
@@ -65,6 +68,7 @@ grep -q -- "-n -u $AGENT_USER /usr/bin/env -i HOME=$AGENT_HOME" "$REPAIR_CALLS" 
 rm -rf .git/objects/yy
 # A directory neither owner may change blocks before the fetch.
 mkdir -p .git/objects/xx; chmod 2755 .git/objects/xx
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 id() { echo 99999; }
 before=$(git rev-parse HEAD)
 reject prepare_task_base feature
@@ -77,6 +81,7 @@ ok 'base preparation restores group access per owner (coding user, publisher); r
 # Two archives of the same branch within one second get distinct names.
 git checkout -q --detach "$BASE"
 git branch -f same-second "$BASE"
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 date() { if [[ "$*" == *'%Y%m%dT%H%M%SZ'* ]]; then echo 20260101T000000Z; else command date "$@"; fi; }
 archive_unpublished_task_branch same-second || fail 'first archive failed'
 git branch -f same-second "$BASE"
@@ -166,6 +171,7 @@ FINAL_PR_BODY="$PR_EXECUTIVE_SUMMARY"
 LOOP_CRITIC=true LOOP_CRITIC_RUBRIC=repo-aware LOOP_MAX_REVIEW_BYTES=262144
 COPILOT_PAT=fixture
 CRITIC_INPUT_NONCE_OVERRIDE=fixture-nonce
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_agent_copilot() {
   local input
   input=$(find "$WORKSPACE_DIR" -maxdepth 1 -name '.critic-input.*.md')
@@ -187,6 +193,7 @@ ok 'full late diff and base policy plus actual body reviewed; oversize fails clo
 python3 -c 'import os,sys; sys.stdout.buffer.write(b"\x89PNG\r\n\x1a\n"+os.urandom(60000))' > shot.png
 git add shot.png && git commit -qm 'binary evidence'
 PNG_BLOB=$(git rev-parse HEAD:shot.png)
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 run_agent_copilot() {
   local input
   input=$(find "$WORKSPACE_DIR" -maxdepth 1 -name '.critic-input.*.md')
@@ -207,6 +214,7 @@ FINAL_PR_BODY='### UI evidence
   mkdir -p "$LOOP_PROFILE_DIR"
   printf 'evidence-fixture/images/\n' >"$LOOP_PROFILE_DIR/review-assets.txt"
   # Root-owned profile validation is exercised separately; this fixture tests data binding.
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   read_profile_file() { cat "$LOOP_PROFILE_DIR/$1"; }
   linked=$(bind_review_asset_links "$HEAD_SHA")
   [[ "$linked" == *"/blob/${HEAD_SHA}/evidence-fixture/images/screen.png?raw=true"* ]] || fail 'image link not immutable'
@@ -265,6 +273,7 @@ is_autonomous_issue "$ISSUE"
 ISSUE_CONTRACT_HASH=$(issue_contract_hash "$ISSUE")
 CURRENT_CLAIM_REF=refs/heads/squad-claims/issue-1 CURRENT_CLAIM_OID=owned
 REMOTE_OID=owned
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() { if [[ "$1" == issue ]]; then echo "$ISSUE"; else echo "$REMOTE_OID"; fi; }
 publication_authorized 1 squad squad:processing
 ISSUE=$(jq '.labels |= map(select(.name != "approved-work"))' <<<"$ISSUE")
@@ -289,6 +298,7 @@ ok 'remote readiness rejects absent policy, pending, failure and ambiguous check
 # Cleanup consumes terminal revision without deleting local code/branch.
 CURRENT_CLAIM_REF="" CURRENT_CLAIM_OID=""
 CALLS="$TMP/calls"
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() { printf '%s\n' "$*" >>"$CALLS"; }
 cleanup_issue 1 feature 'terminal fixture'
 grep -q -- '--remove-label squad:revision' "$CALLS" || fail 'revision trigger survived'
@@ -317,6 +327,7 @@ release_owned_ref() { return 0; }
 PR_BASE="$BASE" PR_MERGEABLE=MERGEABLE COMPARE_STATUS=ahead COMMENTS_MODE=""
 CI_COMMENTS="$TMP/ci-comments.json"
 echo '[]' >"$CI_COMMENTS"
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() {
   printf '%s\n' "$*" >>"$GH_CALLS"
   if [[ "$1 $2" == 'issue view' ]]; then echo "$ISSUE"; return 0; fi
@@ -464,8 +475,9 @@ CURRENT_CLAIM_REF=refs/heads/squad-claims/issue-7
 CURRENT_CLAIM_OID=owner-a
 REMOTE_WIP_ISSUE=other
 CURRENT_WIP_REF=""
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() {
-  if [[ "$*" == *'--method POST'* ]]; then mkdir "$WIP_LOCK" 2>/dev/null; return $?; fi
+  if [[ "$*" == *'--method POST'* ]]; then fixture_claim_directory "$WIP_LOCK"; return $?; fi
   if [[ "$*" == *'/git/commits/'* ]]; then printf '{"issue":"%s"}\n' "$REMOTE_WIP_ISSUE"; return 0; fi
   echo existing-owner
 }
@@ -481,6 +493,7 @@ ok 'repository WIP race admits one owner; another issue cannot take existing slo
 # Losing a claim must not remove a replacement owner's processing/revision labels.
 CURRENT_CLAIM_REF=refs/heads/squad-claims/issue-7 CURRENT_CLAIM_OID=old-owner
 LOST_CALLS="$TMP/lost-claim-calls"
+# shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() { printf '%s\n' "$*" >>"$LOST_CALLS"; echo replacement-owner; }
 reject cleanup_issue 7 feature 'ownership changed'
 if grep -q 'issue edit' "$LOST_CALLS"; then fail 'cleanup mutated replacement owner labels'; fi
@@ -545,7 +558,9 @@ ok 'Actions backend handles inaccessible check rollup without skipping workflows
 
 # A policy refusal stays terminal and is reported as policy, not infrastructure.
 (
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_verify_gate() { VERIFY_LOG_TAIL='fixture authorization revoked'; return 5; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   take_correction() { fail 'policy refusal entered a code correction'; }
   reject run_verify_with_corrections
   [[ "$GATE_NOTE" == 'Operator policy blocked verification; no code correction attempted. fixture authorization revoked' ]] || fail 'policy diagnostic lost'
@@ -701,16 +716,24 @@ ok 'operator policy failure stays terminal with precise diagnosis'
   # Real sanitizer (an earlier fixture replaced it); the remote is the local bare repo.
   eval "$(sed -n '/^sanitize_repository_git_config() {/,/^}/p' "$ROOT/worker/worker-loop.sh")"
   sanitize_repository_git_config
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   push_master() { (cd "$P" && command git pull -q --ff-only origin main && printf '%s\n' "$2" >"$1" &&
     command git add "$1" && command git commit -qm "master: $1" && command git push -q origin HEAD:main); }
   # Boundaries: credentials, user switch for scratch files, launcher, GitHub API, model.
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   ensure_token() { return 0; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   read_repo_file() { local r; r=$(resolve_repo_file_path "$1") || return 1; sed -n "1,${2:-1200}p" "$r"; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   remove_repo_file_as_agent() { rm -f -- "$WORKSPACE_DIR/$1"; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_agent_command() { echo HANGAR_AGENT_STARTED; /usr/bin/bash --noprofile --norc -c "$1"; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   claim_issue() { CURRENT_CLAIM_REF="refs/heads/squad-claims/issue-$1" CURRENT_CLAIM_OID=e2e-owner CURRENT_MANUAL_INTAKE=false
     ISSUE_CONTRACT_HASH=$(issue_contract_hash "$E2E_ISSUE"); }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   release_owned_ref() { return 0; }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   gh() {
     printf '%s\n' "$*" >>"$CALLS"
     case "$1 $2" in
@@ -724,6 +747,7 @@ ok 'operator policy failure stays terminal with precise diagnosis'
       *) echo "unexpected gh $*" >&2; return 1 ;;
     esac
   }
+  # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
   run_agent_copilot() {
     local arg prev="" prompt=""
     for arg in "$@"; do [[ "$prev" != -p ]] || prompt="$arg"; prev="$arg"; done
