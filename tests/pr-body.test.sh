@@ -41,6 +41,8 @@ for contract in \
   'Do not close parent findings; do not close this issue until checks pass.' \
   'This implements the result of the parent discussion #17.' \
   'The parent is a discussion issue; close this implementation phase.' \
+  'Discussion: parent finding #17; close this implementation phase.' \
+  'Discussion: #17; close this implementation phase.' \
   'Never close until the required checks pass.' \
   'Must not close this issue unless the dependency is updated.' \
   'No auto-closing before review.' \
@@ -66,6 +68,7 @@ for contract in \
   'Do not close this issue, but do not close the parent until checks pass.' \
   'This is a discussion issue.' \
   'For discussion only.' \
+  'Do not close this discussion issue.' \
   'Discussion: compare the approaches.' \
   'This issue is reference-only.'; do
   render_expect '' "$contract"

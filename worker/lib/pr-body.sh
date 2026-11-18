@@ -41,28 +41,37 @@ issue_requests_reference_only() {
     process.stdin.on("end",()=>{
       const current=process.argv[1], repo=process.argv[2].toLowerCase();
       if (!/^[1-9][0-9]*$/.test(current)) return process.exit(2);
+      const targetScope=text=>{
+        const reference=/(?:(?:https:\/\/github\.com\/)?([\w.-]+\/[\w.-]+)(?:\/issues\/|#)|#)([0-9]+)\b/g;
+        const refs=[...text.matchAll(reference)], words=text.replace(reference, "");
+        const isCurrent=m=>(!m[1] || m[1]===repo) && m[2].replace(/^0+/, "")===current;
+        const own=refs.some(isCurrent) || (refs.length===0 && /^(?:the )?(?:issue|phase|task)\b/.test(words.trim())) ||
+          /\b(?:this|current)[ -](?:(?:implementation|discussion)[ -])?(?:issue|phase|task|finding)\b/.test(words);
+        const other=refs.some(m=>!isCurrent(m)) || /\b(?:parent|other|separate|unrelated|sibling)\b/.test(words);
+        return {own,other,words};
+      };
       let referenceOnly=false, ambiguous=false;
       for (const clause of text.toLowerCase().split(/[!?;\n]|\.(?=\s|$)/)) {
-        const discussion=/\bdiscussion\b/.test(clause);
-        if (/^\s*(?:[-*]\s*)?(?:(?:this is (?:a )?|for ))?(?:discussion(?:[- ]only)?(?: issue)?|reference[- ]only)\s*(?::|$)/.test(clause) ||
-            /\b(?:this|current) (?:issue|phase|task) (?:is|remains) (?:a |for )?(?:discussion(?:[- ]only)?|reference[- ]only)\b/.test(clause)) referenceOnly=true;
-        else if (discussion && !/\b(?:parent|other|separate|unrelated|sibling)\b/.test(clause) &&
-                 ![...clause.matchAll(/#([0-9]+)\b/g)].some(m=>m[1]!==current)) ambiguous=true;
         const bans=[...clause.matchAll(/\b(?:do not|must not|never|no)[ -]*(?:auto[ -]*)?clos(?:e|ing)\b/g)];
+        const typeWord=/\b(?:discussion|reference[- ]only)\b/.test(clause);
+        const currentType=/\b(?:(?:this|current) (?:issue|phase|task) (?:is|remains) (?:a |for )?|this is a )(?:discussion(?:[- ]only)?|reference[- ]only)\b/.test(clause);
+        if (currentType) referenceOnly=true;
+        else if (typeWord && bans.length===0) {
+          const scope=targetScope(clause);
+          const typeHeading=/^\s*(?:[-*]\s*)?(?:for )?(?:discussion(?:[- ]only)?(?: issue)?|reference[- ]only)\b/.test(clause);
+          if (!scope.other && typeHeading) referenceOnly=true;
+          else if (!scope.other || scope.own) ambiguous=true;
+        }
         for (let i=0;i<bans.length;i++) {
           const ban=bans[i];
           const tail=clause.slice(ban.index+ban[0].length, bans[i+1]?.index);
           // Conditions authorize closure only on merge after the normal gates.
           const condition=/\b(?:until|unless|without|before)\b/.exec(tail);
           const target=tail.slice(0,condition?.index).replace(/[, ]*(?:but|and)\s*$/, "").trim();
-          const reference=/(?:(?:https:\/\/github\.com\/)?([\w.-]+\/[\w.-]+)(?:\/issues\/|#)|#)([0-9]+)\b/g;
-          const refs=[...target.matchAll(reference)], words=target.replace(reference, "");
-          const isCurrent=m=>(!m[1] || m[1]===repo) && m[2].replace(/^0+/, "")===current;
-          const own=refs.some(isCurrent) || (refs.length===0 && /^(?:the )?(?:issue|phase|task)\b/.test(words)) || /\b(?:this|current)[ -](?:implementation[ -])?(?:issue|phase|task|finding)\b/.test(words);
-          const other=refs.some(m=>!isCurrent(m)) || /\b(?:parent|other|separate|unrelated|sibling)\b/.test(words);
-          if ((own && other) || (condition && /\b(?:but|and)\b/.test(words))) { ambiguous=true; continue; }
-          if (other) continue;
-          if (!own && target!=="") { ambiguous=true; continue; }
+          const scope=targetScope(target);
+          if ((scope.own && scope.other) || (condition && /\b(?:but|and)\b/.test(scope.words))) { ambiguous=true; continue; }
+          if (scope.other) continue;
+          if (!scope.own && target!=="") { ambiguous=true; continue; }
           if (!condition) referenceOnly=true;
         }
       }
