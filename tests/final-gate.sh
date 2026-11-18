@@ -67,6 +67,7 @@ for f in \
   tests/immutable-evidence.test.sh \
   tests/evidence-availability.test.sh \
   tests/fixtures/evidence-user-switch.sh \
+  tests/fixtures/atomic-mkdir.sh \
   tests/image-key-hygiene.test.sh \
   tests/critic-complete-input.test.sh \
   tests/agent-launch.container.sh \

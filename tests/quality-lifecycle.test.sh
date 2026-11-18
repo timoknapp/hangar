@@ -14,6 +14,8 @@ export AGENT_GROUP
 source "$ROOT/worker/worker-loop.sh"
 # shellcheck source=tests/fixtures/evidence-user-switch.sh
 source "$ROOT/tests/fixtures/evidence-user-switch.sh"
+# shellcheck source=tests/fixtures/atomic-mkdir.sh
+source "$ROOT/tests/fixtures/atomic-mkdir.sh"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok() { echo "PASS: $*"; }
 reject() { if "$@"; then fail "unexpected success: $*"; fi; }
@@ -475,7 +477,7 @@ REMOTE_WIP_ISSUE=other
 CURRENT_WIP_REF=""
 # shellcheck disable=SC2329 # Invoked indirectly by the sourced worker under test.
 gh() {
-  if [[ "$*" == *'--method POST'* ]]; then mkdir "$WIP_LOCK" 2>/dev/null; return $?; fi
+  if [[ "$*" == *'--method POST'* ]]; then fixture_claim_directory "$WIP_LOCK"; return $?; fi
   if [[ "$*" == *'/git/commits/'* ]]; then printf '{"issue":"%s"}\n' "$REMOTE_WIP_ISSUE"; return 0; fi
   echo existing-owner
 }

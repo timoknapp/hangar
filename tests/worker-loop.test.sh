@@ -137,6 +137,8 @@ export COPILOT_PAT="test-token"
 source "$WORKER_SCRIPT"
 # shellcheck source=tests/fixtures/evidence-user-switch.sh
 source "$ROOT_DIR/tests/fixtures/evidence-user-switch.sh"
+# shellcheck source=tests/fixtures/atomic-mkdir.sh
+source "$ROOT_DIR/tests/fixtures/atomic-mkdir.sh"
 CURRENT_ISSUE=42
 CURRENT_TOKEN="test-token"
 branch_name="feature"
@@ -677,9 +679,9 @@ gh() {
     fi
     if [[ " $* " == *" --method POST "* ]]; then
       if [[ "$*" == *"refs/heads/squad-budget/"* ]]; then
-        mkdir "$BUDGET_LOCK" 2>/dev/null
+        fixture_claim_directory "$BUDGET_LOCK"
       else
-        mkdir "$CLAIM_LOCK" 2>/dev/null
+        fixture_claim_directory "$CLAIM_LOCK"
       fi
       return $?
     fi
@@ -698,7 +700,7 @@ gh() {
     return 1
   fi
   if [[ " $* " == *" --method POST "* ]]; then
-    mkdir "$BUDGET_LOCK" 2>/dev/null
+    fixture_claim_directory "$BUDGET_LOCK"
     return $?
   fi
   [[ "$*" == *"/git/ref/"* ]] && [[ -d "$BUDGET_LOCK" ]]
