@@ -56,6 +56,7 @@ for f in \
   deploy.sh \
   remote-deploy.sh \
   tests/worker-loop.test.sh \
+  tests/pr-body.test.sh \
   tests/issue-evidence.test.sh \
   tests/review-origin.test.sh \
   tests/quality-lifecycle.test.sh \
@@ -112,6 +113,7 @@ bash tests/public-release-check.sh
 bash tests/config-equivalence.sh
 bash tests/pr-guard.test.sh
 bash tests/worker-loop.test.sh
+bash tests/pr-body.test.sh
 bash tests/receipt.test.sh
 bash tests/retry-preflight.test.sh
 bash tests/checkpoint-reaper.test.sh

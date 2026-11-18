@@ -1,4 +1,5 @@
 # shellcheck shell=bash
+# shellcheck disable=SC2016 # JavaScript replacements/template strings, not shell expansion.
 # Publisher-owned PR summary rendering and current-issue closure policy.
 
 extract_pr_summary_section() {
@@ -23,23 +24,66 @@ extract_pr_summary_section() {
 # trusted publisher. Agent prose and issue context may mention other work, but
 # must not accidentally close it when the PR merges.
 neutralize_closing_references() {
-  sed -E 's/([Cc]lose[sd]?|[Ff]ix(e[sd])?|[Rr]esolve[sd]?)([[:space:]]*):?[[:space:]]+#/\1 issue #/g'
+  node -e '
+    let text="";process.stdin.setEncoding("utf8");process.stdin.on("data",x=>text+=x);
+    process.stdin.on("end",()=>process.stdout.write(text.replace(
+      /\b(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+((?:[\w.-]+\/[\w.-]+)?#[0-9]+|https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/[0-9]+)/gi,
+      "$1 issue $2")));
+  '
 }
 
-# A completion prerequisite ("do not close until/without ...") is not a
-# permanent no-close request. It does not bypass publication/review gates:
-# a canonical link only closes the issue when the reviewed PR is merged.
+# Exit 0: current issue is reference-only; 1: close on merge; 2: target unclear.
+# Parse each prohibition separately: a parent prerequisite must not cancel a
+# permanent current-issue prohibition (or vice versa).
 issue_requests_reference_only() {
-  awk 'BEGIN {RS="[.!?;\n]"}
-    {
-      clause=tolower($0)
-      if (clause ~ /discussion/) found=1
-      if (match(clause, /(do not|must not|never|no)[ -]*(auto[ -]*)?clos(e|ing)/)) {
-        tail=substr(clause, RSTART+RLENGTH)
-        if (tail !~ /(^|[^[:alnum:]_])(until|unless|without|before)([^[:alnum:]_]|$)/) found=1
+  node -e '
+    let text=""; process.stdin.setEncoding("utf8"); process.stdin.on("data",x=>text+=x);
+    process.stdin.on("end",()=>{
+      const current=process.argv[1], repo=process.argv[2].toLowerCase();
+      if (!/^[1-9][0-9]*$/.test(current)) return process.exit(2);
+      let referenceOnly=false, ambiguous=false;
+      for (const clause of text.toLowerCase().split(/[!?;\n]|\.(?=\s|$)/)) {
+        if (/^\s*(?:[-*]\s*)?(?:this is (?:a )?)?(?:discussion(?:[- ]only)?(?: issue)?|reference[- ]only)\s*$/.test(clause) ||
+            /\b(?:this|current) (?:issue|phase|task) (?:is|remains) (?:a |for )?(?:discussion(?:[- ]only)?|reference[- ]only)\b/.test(clause)) referenceOnly=true;
+        const bans=[...clause.matchAll(/\b(?:do not|must not|never|no)[ -]*(?:auto[ -]*)?clos(?:e|ing)\b/g)];
+        for (let i=0;i<bans.length;i++) {
+          const ban=bans[i];
+          const tail=clause.slice(ban.index+ban[0].length, bans[i+1]?.index);
+          // Conditions authorize closure only on merge after the normal gates.
+          const condition=/\b(?:until|unless|without|before)\b/.exec(tail);
+          const target=tail.slice(0,condition?.index).replace(/[, ]*(?:but|and)\s*$/, "").trim();
+          const reference=/(?:(?:https:\/\/github\.com\/)?([\w.-]+\/[\w.-]+)(?:\/issues\/|#)|#)([0-9]+)\b/g;
+          const refs=[...target.matchAll(reference)], words=target.replace(reference, "");
+          const isCurrent=m=>(!m[1] || m[1]===repo) && m[2].replace(/^0+/, "")===current;
+          const own=refs.some(isCurrent) || (refs.length===0 && /^(?:the )?(?:issue|phase|task)\b/.test(words)) || /\b(?:this|current)[ -](?:implementation[ -])?(?:issue|phase|task|finding)\b/.test(words);
+          const other=refs.some(m=>!isCurrent(m)) || /\b(?:parent|other|separate|unrelated|sibling)\b/.test(words);
+          if ((own && other) || (condition && /\b(?:but|and)\b/.test(words))) { ambiguous=true; continue; }
+          if (other) continue;
+          if (!own && target!=="") { ambiguous=true; continue; }
+          if (!condition) referenceOnly=true;
+        }
       }
-    }
-    END {exit !found}'
+      process.exit(ambiguous ? 2 : referenceOnly ? 0 : 1);
+    });
+  ' -- "${1:-}" "$REPO_SLUG"
+}
+
+# Validate the body actually passed to review, never the pre-transform summary.
+# This guard also catches closing syntax injected through technical details or
+# later rendering additions; no correction retry can repair publisher output.
+validate_final_pr_body_closure() {
+  local policy=0
+  issue_requests_reference_only "$CURRENT_ISSUE" <<<"$issue_body" || policy=$?
+  [[ "$policy" != 2 ]] || return 1
+  [[ "$TASK_SPEC" != true ]] || policy=0
+  printf "%s" "$FINAL_PR_BODY" | node -e '
+    let text="";process.stdin.setEncoding("utf8");process.stdin.on("data",x=>text+=x);
+    process.stdin.on("end",()=>{
+      const matches=[...text.matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+((?:[\w.-]+\/[\w.-]+)?#[0-9]+|https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/[0-9]+)/gi)];
+      const closing=process.argv[2]==="1";
+      process.exit(Number(closing ? !(matches.length===1 && matches[0][1]===`#${process.argv[1]}` && text.split("\n").includes(`Closes #${process.argv[1]}.`)) : matches.length!==0));
+    });
+  ' -- "$CURRENT_ISSUE" "$policy"
 }
 
 build_pr_body() {
@@ -47,7 +91,7 @@ build_pr_body() {
   local issue_title="$2"
   local issue_body="$3"
   local change_summary="$4"
-  local problem root_cause solution testing future_work issue_context issue_reference
+  local problem root_cause solution testing future_work issue_context issue_reference policy=0
 
   problem=$(extract_pr_summary_section "$PR_EXECUTIVE_SUMMARY" "Problem" | neutralize_closing_references)
   root_cause=$(extract_pr_summary_section "$PR_EXECUTIVE_SUMMARY" "Root Cause" | neutralize_closing_references)
@@ -76,9 +120,12 @@ ${issue_context}"
   issue_reference="Closes #${issue_num}."
   # A spec never closes its issue: merging it approves the later implementation.
   [[ "$TASK_SPEC" != true ]] || issue_reference="Refs #${issue_num} (spec; merging approves implementation)."
-  if issue_requests_reference_only <<<"$issue_body"; then
-    issue_reference="Refs #${issue_num}."
-  fi
+  issue_requests_reference_only "$issue_num" <<<"$issue_body" || policy=$?
+  case "$policy" in
+    0) issue_reference="Refs #${issue_num}." ;;
+    1) ;;
+    *) echo "Closure policy needs a decision: name the current issue or a distinct parent target explicitly." >&2; return 2 ;;
+  esac
   cat <<EOF
 ## Problem
 

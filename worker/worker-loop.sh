@@ -2205,8 +2205,14 @@ finish_issue() {
 
   # Run quality gates (verify + independent critic) with bounded self-correction.
   # Disabled local gates allow draft only; failures block publication.
-  if ! run_quality_gates; then
-    cleanup_issue "$issue_num" "$branch_name" "${GATE_NOTE:-Quality gates blocked}"
+  local gate_rc=0
+  run_quality_gates || gate_rc=$?
+  if (( gate_rc != 0 )); then
+    if (( gate_rc == 2 )); then
+      park_for_decision "$issue_num" "$GATE_NOTE"
+    else
+      cleanup_issue "$issue_num" "$branch_name" "${GATE_NOTE:-Quality gates blocked}"
+    fi
     return 1
   fi
 
@@ -2505,8 +2511,14 @@ Auto-committed by Squad Worker ${WORKER_ID}." || return 1
 
   # Classify the revision with the same gates as initial work before any
   # revised commit reaches the existing pull request.
-  if ! run_quality_gates; then
-    cleanup_issue "$issue_num" "$branch_name" "${GATE_NOTE:-Quality gates blocked}"
+  local gate_rc=0
+  run_quality_gates || gate_rc=$?
+  if (( gate_rc != 0 )); then
+    if (( gate_rc == 2 )); then
+      park_for_decision "$issue_num" "$GATE_NOTE"
+    else
+      cleanup_issue "$issue_num" "$branch_name" "${GATE_NOTE:-Quality gates blocked}"
+    fi
     return 1
   fi
 
@@ -3285,11 +3297,20 @@ summary_complete() {
 # Final body as reviewed. Suggestions are rendered before the critic hashes it.
 build_final_pr_body() {
   REVIEW_SUGGESTIONS_MD=$(render_review_suggestions) || return 1
-  FINAL_PR_BODY=$(build_pr_body "$CURRENT_ISSUE" "$issue_title" "$issue_body" "$(generate_change_summary "$TASK_BASE_SHA")") || return 1
+  local render_rc=0
+  FINAL_PR_BODY=$(build_pr_body "$CURRENT_ISSUE" "$issue_title" "$issue_body" "$(generate_change_summary "$TASK_BASE_SHA")") || render_rc=$?
+  if (( render_rc != 0 )); then
+    GATE_NOTE="Closure policy needs a decision: edit the issue contract to name the current issue or a distinct parent target explicitly; no correction attempted."
+    return "$render_rc"
+  fi
   FINAL_PR_BODY=$(bind_review_asset_links "$(git rev-parse HEAD)") || return 1
   FINAL_PR_BODY="${FINAL_PR_BODY}
 
 <!-- hangar-evidence base=${TASK_BASE_SHA} head=$(git rev-parse HEAD) verified=${VERIFIED_HEAD:-none} -->"
+  if ! validate_final_pr_body_closure; then
+    GATE_NOTE="Publisher-rendered closure contract invalid; review blocked. Raw-summary checks are not final-body evidence; no correction attempted."
+    return 1
+  fi
 }
 
 run_quality_gates() {
@@ -3305,7 +3326,7 @@ run_quality_gates() {
       return 1
     fi
     summary_complete || { GATE_NOTE="Missing/incomplete five-heading summary; review blocked"; return 1; }
-    build_final_pr_body || return 1
+    build_final_pr_body || return $?
     if [[ "$LOOP_CRITIC" != true ]]; then
       GATE_NOTE="Independent critic disabled; draft only."
       return 0
@@ -3315,7 +3336,7 @@ run_quality_gates() {
       # Suggestions first reported by this approval are not in the bound body yet:
       # one bounded full re-review of the same head binds them (no correction used).
       [[ "$(render_review_suggestions)" == "$REVIEW_SUGGESTIONS_MD" ]] && return 0
-      build_final_pr_body || return 1
+      build_final_pr_body || return $?
       log "Critic: re-reviewing once so new suggestions are bound into the PR body"
       if run_critic_review; then
         # ponytail: a second approval may add more suggestions; those stay in the
